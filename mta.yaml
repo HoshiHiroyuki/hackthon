@@ -1,8 +1,7 @@
----
 _schema-version: '3.1'
 ID: MyHANAApp
 version: 1.0.0
-description: "A simple CAP project."
+description: A simple CAP project.
 parameters:
   enable-parallel-deployments: true
 build-parameters:
@@ -11,7 +10,6 @@ build-parameters:
       commands:
         - npm ci
         - npx -p @sap/cds-dk cds build --production
-
 modules:
   - name: MyHANAApp-srv
     type: nodejs
@@ -21,52 +19,37 @@ modules:
     build-parameters:
       builder: npm-ci
     provides:
-      - name: srv-api # required by consumers of CAP services (e.g. approuter)
+      - name: srv-api
         properties:
-          srv-url: ${default-url}
+          srv-url: '${default-url}'
     requires:
       - name: MyHANAApp-db
-#      - name: MyHANAApp-auth
-
   - name: MyHANAApp-db-deployer
     type: hdb
-    path: db
+    path: gen/srv
     parameters:
       buildpack: nodejs_buildpack
     requires:
       - name: MyHANAApp-db
-
   - name: MyHANAApp
     type: approuter.nodejs
-    path: app/ # from cds.env.folders. Consider also cds.env.build.target -> gen/app
+    path: app
     parameters:
       keep-existing-routes: true
-      disk-quota: 256M
-      memory: 256M
+      disk-quota: 512M
+      memory: 512M
     requires:
       - name: srv-api
         group: destinations
         properties:
-          name: srv-api # must be used in xs-app.json as well
-          url: ~{srv-url}
+          name: srv-api
+          url: '~{srv-url}'
           forwardAuthToken: true
-#      - name: MyHANAApp-auth
-
 resources:
   - name: MyHANAApp-db
     type: com.sap.xs.hdi-container
     parameters:
-      service: hana # or 'hanatrial' on trial landscapes
+      service: hana
       service-plan: hdi-shared
     properties:
-      hdi-service-name: ${service-name}
-
-  # - name: MyHANAApp-auth
-  #   type: org.cloudfoundry.managed-service
-  #   parameters:
-  #     service: xsuaa
-  #     service-plan: application
-  #     path: ./xs-security.json
-  #     config:
-  #       xsappname: MyHANAApp-${org}-${space}
-  #       tenant-mode: dedicated
+      hdi-service-name: '${service-name}'
