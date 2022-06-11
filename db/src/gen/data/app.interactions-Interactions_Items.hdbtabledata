@@ -1,0 +1,31 @@
+{
+  "format_version": 1,
+  "imports": [
+    {
+      "target_table": "APP_INTERACTIONS_INTERACTIONS_ITEMS",
+      "source_data": {
+        "data_type": "CSV",
+        "file_name": "app.interactions-Interactions_Items.csv",
+        "has_header": true,
+        "type_config": {
+          "delimiter": ";"
+        }
+      },
+      "import_settings": {
+        "import_columns": [
+          "INTHEADER_ID",
+          "TEXT_ID",
+          "LANGU",
+          "LOGTEXT"
+        ],
+        "include_filter": []
+      },
+      "column_mappings": {
+        "INTHEADER_ID": "INTHEADER_ID",
+        "TEXT_ID": "TEXT_ID",
+        "LANGU": "LANGU",
+        "LOGTEXT": "LOGTEXT"
+      }
+    }
+  ]
+}
