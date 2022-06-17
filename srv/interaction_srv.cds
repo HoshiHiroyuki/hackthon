@@ -1,10 +1,16 @@
 using app.interactions from '../db/interactions';
-service CatalogService {
 
- entity Interactions_Header
-	as projection on interactions.Interactions_Header;
+service CatalogService
+{
+    entity Interactions_Header as
+        projection on interactions.Interactions_Header;
 
- entity Interactions_Items
-	as projection on  interactions.Interactions_Items;
+    entity Interactions_Items as
+        projection on interactions.Interactions_Items;
 
+    entity PurchaseOrder as
+        projection on interactions.PurchaseOrder;
+
+    entity PurchasingProcessingStatus as
+        projection on interactions.PurchasingProcessingStatus;
 }

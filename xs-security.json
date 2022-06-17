@@ -1,5 +1,7 @@
 {
   "scopes": [],
   "attributes": [],
-  "role-templates": []
+  "role-templates": [],
+  "xsappname": "MyHANAApp",
+  "tenant-mode": "dedicated"
 }

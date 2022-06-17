@@ -1,0 +1,27 @@
+{
+  "format_version": 1,
+  "imports": [
+    {
+      "target_table": "APP_INTERACTIONS_PURCHASINGPROCESSINGSTATUS",
+      "source_data": {
+        "data_type": "CSV",
+        "file_name": "app.interactions-PurchasingProcessingStatus.csv",
+        "has_header": true,
+        "type_config": {
+          "delimiter": ","
+        }
+      },
+      "import_settings": {
+        "import_columns": [
+          "STATUSID",
+          "STATUSNM"
+        ],
+        "include_filter": []
+      },
+      "column_mappings": {
+        "STATUSID": "StatusID",
+        "STATUSNM": "StatusNm"
+      }
+    }
+  ]
+}

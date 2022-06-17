@@ -8,48 +8,167 @@ build-parameters:
   before-all:
     - builder: custom
       commands:
-        - npm ci
-        - npx -p @sap/cds-dk cds build --production
+        - rm -rf build/ui-deployer
+        - mkdir -p build/ui-deployer
+    - builder: custom
+      commands:
+        - npm install --production
+        - >-
+          bash -c "cds -v 2>/dev/null >/dev/null || npm install --no-save
+          @sap/cds-dk"
+        - npx cds build --production
 modules:
+  - name: MyHANAApp-db-deployer
+    type: hdb
+    path: db
+    parameters:
+      buildpack: nodejs_buildpack
+    build-parameters:
+      builder: npm
+      ignore:
+        - node_modules
+        - package-lock.json
+    requires:
+      - name: MyHANAApp-service-uaa
+      - name: MyHANAApp-service-db
   - name: MyHANAApp-srv
     type: nodejs
     path: gen/srv
     parameters:
-      buildpack: nodejs_buildpack
-    build-parameters:
-      builder: npm-ci
+      memory: 256MB
     provides:
       - name: srv-api
         properties:
-          srv-url: '${default-url}'
+          srv-url: ${default-url}
+    build-parameters:
+      builder: npm
+      ignore:
+        - node_modules
+        - package-lock.json
     requires:
-      - name: MyHANAApp-db
-  - name: MyHANAApp-db-deployer
-    type: hdb
-    path: db #gen/srv
+      - name: MyHANAApp-service-uaa
+      - name: MyHANAApp-service-db
+      - name: MyHANAApp-service-destination
+      - name: MyHANAApp-service-metadata
+      - name: MyHANAApp-service-connectivity
+      - name: MyHANAApp-service-logs
+  - name: MyHANAApp-aux-destinations
+    type: com.sap.application.content
     parameters:
-      buildpack: nodejs_buildpack
+      content:
+        subaccount:
+          existing_destinations_policy: update
+          destinations:
+            - Authentication: OAuth2UserTokenExchange
+              Name: MyHANAApp-service-uaa
+              ServiceInstanceName: MyHANAApp-uaa
+              ServiceKeyName: MyHANAApp-uaa-key
+              sap.cloud.service: lcap.MyHANAApp
+            - Authentication: OAuth2UserTokenExchange
+              Name: MyHANAApp-app-srv
+              TokenServiceInstanceName: MyHANAApp-uaa
+              TokenServiceKeyName: MyHANAApp-uaa-key
+              URL: ~{srv-api/srv-url}
+              sap.cloud.service: lcap.MyHANAApp
+            - Name: MyHANAApp-service-html5-apps-repo-host
+              ServiceInstanceName: MyHANAApp-html5-apps-repo-host
+              ServiceKeyName: MyHANAApp-html5-apps-repo-host-key
+              sap.cloud.service: lcap.MyHANAApp
+    build-parameters:
+      no-source: true
     requires:
-      - name: MyHANAApp-db
-  - name: MyHANAApp
-    type: approuter.nodejs
-    path: app
-    parameters:
-      keep-existing-routes: true
-      disk-quota: 512M
-      memory: 512M
-    requires:
+      - name: MyHANAApp-service-uaa
+        parameters:
+          service-key:
+            name: MyHANAApp-uaa-key
       - name: srv-api
-        group: destinations
-        properties:
-          name: srv-api
-          url: '~{srv-url}'
-          forwardAuthToken: true
+      - name: MyHANAApp-service-html5-apps-repo-host
+        parameters:
+          service-key:
+            name: MyHANAApp-html5-apps-repo-host-key
+      - name: MyHANAApp-service-destination
+        parameters:
+          content-target: true
+  - name: MyHANAApp-launchpad
+    type: html5
+    path: build/launchpad
+    build-parameters:
+      builder: custom
+      commands:
+        - rm -rf dist-zip dist
+        - npm install
+        - >-
+          npx -p @ui5/cli ui5 build --dest dist
+          --include-task=generateManifestBundle
+          --include-task=generateCachebusterInfo
+        - mkdir dist-zip
+        - bash -c "cd dist && npx bestzip ../dist-zip/launchpad.zip *"
+      _artifactName: launchpad.zip
+      supported-platforms: []
+      build-result: dist-zip
+  - name: MyHANAApp-aux-ui-deployer
+    type: com.sap.application.content
+    path: build/ui-deployer
+    build-parameters:
+      build-result: resources
+      requires:
+        - name: MyHANAApp-launchpad
+          artifacts:
+            - launchpad.zip
+          target-path: resources
+    requires:
+      - name: MyHANAApp-service-html5-apps-repo-host
+        parameters:
+          content-target: true
 resources:
-  - name: MyHANAApp-db
-    type: com.sap.xs.hdi-container
+  - type: org.cloudfoundry.managed-service
+    name: MyHANAApp-service-uaa
+    parameters:
+      service: xsuaa
+      service-plan: application
+      service-name: MyHANAApp-uaa
+      path: xs-security.json
+      config:
+        xsappname: MyHANAApp-${space}
+        role-collections: []
+  - type: org.cloudfoundry.managed-service
+    name: MyHANAApp-service-db
     parameters:
       service: hana
       service-plan: hdi-shared
-    properties:
-      hdi-service-name: '${service-name}'
+      service-name: MyHANAApp-db
+  - type: org.cloudfoundry.managed-service
+    name: MyHANAApp-service-destination
+    parameters:
+      service: destination
+      service-plan: lite
+      service-name: MyHANAApp-destination
+      config:
+        HTML5Runtime_enabled: true
+        version: 1.0.0
+  - type: org.cloudfoundry.user-provided-service
+    name: MyHANAApp-service-metadata
+    parameters:
+      service: metadata
+      service-plan: standard
+      service-name: MyHANAApp-metadata
+      config:
+        default-domain: ${default-domain}
+  - type: org.cloudfoundry.managed-service
+    name: MyHANAApp-service-connectivity
+    parameters:
+      service: connectivity
+      service-plan: lite
+      service-name: MyHANAApp-connectivity
+  - type: org.cloudfoundry.managed-service
+    name: MyHANAApp-service-logs
+    parameters:
+      service: application-logs
+      service-plan: lite
+      service-name: MyHANAApp-logs
+  - type: org.cloudfoundry.managed-service
+    name: MyHANAApp-service-html5-apps-repo-host
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+      service-name: MyHANAApp-html5-apps-repo-host
